@@ -1,15 +1,12 @@
 # Custom written functions to assist with Reliability analyses
 
-# R.J. Marriott. 5 April 2016.
-
+# R.J. Marriott. 29 June 2016. (Version 2.0)
 
 ##################
 
 # Calculate probability of failure:
 
-Calc.Unreliability.w2p <- function(abrem.obj,time){
-  beta <- abrem.obj$fit[[1]]$beta
-  eta <- abrem.obj$fit[[1]]$eta
+Calc.Unreliability.w2p <- function(beta,eta,time){
   Unreliability <- (1-exp(-((time/eta)^beta)))
   return(Unreliability)
 }
@@ -18,9 +15,7 @@ Calc.Unreliability.w2p <- function(abrem.obj,time){
 
 # Calculate warranty time for target reliability:
 
-Calc.Warranty.w2p <- function(abrem.obj,Rval){
-  beta <- abrem.obj$fit[[1]]$beta
-  eta <- abrem.obj$fit[[1]]$eta
+Calc.Warranty.w2p <- function(beta,eta,Rval){
   time=eta*((-log(Rval))^(1/beta))
   return(time)
 }
@@ -58,32 +53,6 @@ Weibull.2p.Var <- function(eta,beta){
   return(Var.W2p)
 }
 
-###
-
-Get.coef.W2p <- function(abrem.obj){
-  n.methods <- length(abrem.obj$fit)
-  nfail <- abrem.obj$fail
-  ncens <- abrem.obj$cens
-  if(n.methods==1){
-    beta <- abrem.obj$fit[[1]]$beta
-    eta <- abrem.obj$fit[[1]]$eta
-    loglik <- abrem.obj$fit[[1]]$gof$loglik
-  } else{
-    fit.methods <- character(n.methods)
-    for(i in 1:n.methods){
-      fit.methods[i] <- abrem.obj$fit[[i]][1]$options$method.fit[1]
-    }
-    method.index <- which(fit.methods=="mle")
-    beta <- abrem.obj$fit[[method.index]]$beta
-    eta <- abrem.obj$fit[[method.index]]$eta
-    loglik <- abrem.obj$fit[[method.index]]$gof$loglik    
-  }
-  result <- data.frame(beta=beta,eta=eta,
-                       loglik=loglik,
-                       nfail=nfail,ncens=ncens)
-  return(result)
-}
-
 ##################
 
 # For constructing Weibull plots:
@@ -115,11 +84,7 @@ failure.rate.w2p <- function(beta,eta,time){
   return(r)
 }
 
-hazard.plot.w2p <- function(abrem.obj,line.colour,nincr=500){
-  beta <- abrem.obj$fit[[1]]$beta
-  eta <- abrem.obj$fit[[1]]$eta
-  data <- abrem.obj$data
-  time <- data$time
+hazard.plot.w2p <- function(beta,eta,time,line.colour,nincr=500){
   max.time <- max(time,na.rm=F)
   t <- seq(0,max.time,length.out=nincr)
   r <- numeric(length(t))
@@ -129,7 +94,9 @@ hazard.plot.w2p <- function(abrem.obj,line.colour,nincr=500){
   plot(t,r,type='l',bty='l',
        col=line.colour,lwd=2,
        main="",xlab="Time",
-       ylab="Failure rate")
+       ylab="Failure rate",
+       las=1,adj=0.5,
+       cex.axis=0.85,cex.lab=1.2)
 }
 
 ##########
@@ -141,11 +108,7 @@ Reliability.w2p <- function(beta,eta,time){
   return(R)
 }
 
-Reliability.plot.w2p <- function(abrem.obj,line.colour,nincr=500){
-  beta <- abrem.obj$fit[[1]]$beta
-  eta <- abrem.obj$fit[[1]]$eta
-  data <- abrem.obj$data
-  time <- data$time
+Reliability.plot.w2p <- function(beta,eta,time,line.colour,nincr=500){
   max.time <- max(time,na.rm=F)
   t <- seq(0,max.time,length.out=nincr)
   R <- numeric(length(t))
@@ -155,7 +118,9 @@ Reliability.plot.w2p <- function(abrem.obj,line.colour,nincr=500){
   plot(t,R,type='l',bty='l',
        col=line.colour,lwd=2,
        main="",xlab="Time",
-       ylab="Reliability")
+       ylab="Reliability",
+       las=1,adj=0.5,
+       cex.lab=1.2,cex.axis=0.85)
 }
 
 ####
@@ -182,14 +147,20 @@ Plot.Observations <- function(reliability.data,Ntotal=-999){
     par(yaxt="s")
     N.dataset <- ifelse(Ntotal==-999,nrow(dat),Ntotal)
     Start.y <- N.dataset - nrow(dat) + 1
-    axis(2,at=plot.dat[1,],labels=rev(seq(Start.y,N.dataset)))
+    Difference <- abs(nrow(dat)-max(c(seq(1,nrow(dat3),by=5))))
+    axis(2,at=plot.dat[1,c(seq(1,nrow(dat3),by=5))] + ceiling(plot.dat[2,Difference]),
+         labels=rev(seq(Start.y,N.dataset,by=5)),
+         las=1,adj=0.5,cex.axis=0.85)
   } else{
     barplot(t(as.matrix(fail[length(fail):1])),col="black",
             horiz=T,border=NA,
             xlab="time")
     plot.dat <- barplot(t(as.matrix(fail[length(fail):1])),
                         horiz=T,border=NA,plot=F)
-    axis(2,at=plot.dat,labels=rev(seq(1,length(fail))))
+    Difference <- abs(length(fail)-max(c(seq(1,length(fail),by=5))))
+    axis(2,at=plot.dat[seq(1,length(fail),by=5)] + ceiling(plot.dat[2,Difference]),
+         labels=rev(seq(1,length(fail),by=5)),
+         las=1,adj=0.5,cex.axis=0.85)
   }
   legend("topright",
          legend=c("Failure","Suspension"),
@@ -317,7 +288,6 @@ Calc.95.simultaneous.CI <- function(reliability.data,e_val){
   }else{
     dat3$hi=dat3$hiUnadj
   }
-  # return(dat3)
   return(dat3[dat3$Fhat>0 & dat3$Fhat <1,
               colnames(dat3)%in%c("time","Fhat","lo","hi")])
 }
@@ -344,7 +314,7 @@ Normal.probability.plot <- function(x,y,gridlines=F,
   x <- x[y > 0 & y <1] # Can't be plotted on probability paper.
   y <- y[y > 0 & y <1]
   y.trans <- qnorm(y)
-  yticks <- seq(round(min(y.trans),1)-0.1,round(max(y.trans),1)+0.1,
+  yticks <- seq(round(min(y.trans),2),round(max(y.trans),2),
                 length.out=5)
   xticks <- round(seq(0,xmax(max(x)),length.out=5),0)
   if(label.individual.axes==T){X.label <- "Time"
@@ -356,11 +326,12 @@ Normal.probability.plot <- function(x,y,gridlines=F,
     Y.label <- ""
   }
   plot(x,y.trans,xlim=c(0,xmax(max(x))),
-       ylim=c(round(min(y.trans),1)-0.1,round(max(y.trans),1)+0.1),
-       axes=F,pch=16,
+       ylim=c(round(min(y.trans),2),round(max(y.trans),2)),
+       axes=F,pch=16,adj=0.5,
        main="Normal",xlab=X.label,ylab=Y.label)
   axis(1,at=xticks)
-  axis(2,at=yticks,labels=round(pnorm(yticks),2))
+  axis(2,at=yticks,labels=sprintf("%.2f",round(pnorm(yticks),2)),
+       las=1,adj=0.5)
   if(gridlines==T){
     abline(h=yticks,col="lightgray")
     abline(v=xticks,col="lightgray") 
@@ -374,7 +345,7 @@ Lognormal.probability.plot <- function(x,y,gridlines=F,
   y <- y[y > 0 & y <1]
   x.trans <- log(x)
   y.trans <- qnorm(y)
-  yticks <- seq(round(min(y.trans),1)-0.1,round(max(y.trans),1)+0.1,
+  yticks <- seq(round(min(y.trans),2),round(max(y.trans),2),
                 length.out=5)
   xticks <- round(seq(floor(min(x.trans)),ceiling(max(x.trans)),
                       length.out=5),0)
@@ -387,11 +358,12 @@ Lognormal.probability.plot <- function(x,y,gridlines=F,
     Y.label <- ""
   }
   plot(x.trans,y.trans,xlim=c(floor(min(x.trans)),ceiling(max(x.trans))),
-       ylim=c(round(min(y.trans),1)-0.1,round(max(y.trans),1)+0.1),
-       axes=F,pch=16,
+       ylim=c(round(min(y.trans),2),round(max(y.trans),2)),
+       axes=F,pch=16,adj=0.5,
        main="Lognormal",xlab=X.label,ylab=Y.label)
   axis(1,at=xticks,labels=floor(exp(xticks)))
-  axis(2,at=yticks,labels=round(pnorm(yticks),2))
+  axis(2,at=yticks,labels=sprintf("%.2f",round(pnorm(yticks),2)),
+       las=1,adj=0.5)
   if(gridlines==T){
     abline(h=yticks,col="lightgray")
     abline(v=xticks,col="lightgray") 
@@ -416,7 +388,7 @@ Weibull.probability.plot <- function(x,y,gridlines=F,
   y <- y[y > 0 & y <1]
   x.trans <- log(x)
   y.trans <- log(-log(1-y))
-  yticks <- seq(round(min(y.trans),1)-0.1,round(max(y.trans),1)+0.1,
+  yticks <- seq(round(min(y.trans),2),round(max(y.trans),2),
                 length.out=5)
   xticks <- round(seq(floor(min(x.trans)),ceiling(max(x.trans)),
                       length.out=5),0)
@@ -429,11 +401,12 @@ Weibull.probability.plot <- function(x,y,gridlines=F,
     Y.label <- ""
   }
   plot(x.trans,y.trans,xlim=c(floor(min(x.trans)),ceiling(max(x.trans))),
-       ylim=c(round(min(y.trans),1)-0.1,round(max(y.trans),1)+0.1),
-       axes=F,pch=16,
+       ylim=c(round(min(y.trans),2),round(max(y.trans),2)),
+       axes=F,pch=16,adj=0.5,
        main="Weibull",xlab=X.label, ylab=Y.label)
   axis(1,at=xticks, labels=round(exp(xticks),0))
-  axis(2,at=yticks,labels=round(Weibull.backtrans.Y(yticks),2))
+  axis(2,at=yticks,labels=sprintf("%.2f",round(Weibull.backtrans.Y(yticks),2)),
+       las=1,adj=0.5)
   if(gridlines==T){
     abline(h=yticks,col="lightgray")
     abline(v=xticks,col="lightgray") 
@@ -457,7 +430,8 @@ Exponential.probability.plot <- function(x,y,gridlines=F,
   x <- x[y > 0 & y <1] # Can't be plotted on probability paper.
   y <- y[y > 0 & y <1]
   y.trans <- -log(1-y)
-  yticks <- seq(round(min(y.trans),1)-0.1,round(max(y.trans),1)+0.1,
+  yticks <- seq(round(min(y.trans),2),
+                round(max(y.trans),2),
                 length.out=5)
   xticks <- round(seq(0,xmax(max(x)),length.out=5),0)
   if(label.individual.axes==T){X.label <- "Time"
@@ -469,11 +443,13 @@ Exponential.probability.plot <- function(x,y,gridlines=F,
     Y.label <- ""
   }
   plot(x,y.trans,xlim=c(0,xmax(max(x))),
-       ylim=c(round(min(y.trans),1)-0.1,round(max(y.trans),1)+0.1),
-       axes=F,pch=16,
+       ylim=c(round(min(y.trans),2),
+              round(max(y.trans),2)),
+       axes=F,pch=16,adj=0.5,
        main="Exponential",xlab = X.label, ylab = Y.label)
   axis(1,at=xticks)
-  axis(2,at=yticks,labels=round(Exponential.backtrans.Y(yticks),2))
+  axis(2,at=yticks,labels=sprintf("%.2f",round(Exponential.backtrans.Y(yticks),2)),
+       las=1,adj=0.5)
   if(gridlines==T){
     abline(h=yticks,col="lightgray")
     abline(v=xticks,col="lightgray") 
@@ -496,7 +472,8 @@ Probability.Plots <- function(reliability.data,gridlines=F,
   e_val <- Calculate.e_val(Calculate.a_b(dat))
   simult.CLs <- Calc.95.simultaneous.CI(dat,e_val=e_val) # $time, $lo, $hi
   if(dist=="All"){
-  par(mfrow=c(2,2), mar=c(3.5, 3.5, 2, 1) + 0.1,cex.axis=0.75)
+  par(mfrow=c(2,2), mar=c(3, 3, 1, 0.25) + 0.1,cex.axis=0.75,
+      oma=c(0,0,0,0),mgp=c(3,1,0),xpd=T,mai=c(0.75,0.75,0.2,0.2))
   # Plot for Weibull distbn.
   Weibull.probability.plot(Fhat$time,Fhat$Fhat,gridlines,
                            label.individual.axes)
@@ -517,25 +494,34 @@ Probability.Plots <- function(reliability.data,gridlines=F,
   mtext("Time",side=1,line=-1.5,adj=0.5,outer=T,font=2)
   mtext("Unreliability, F(t)=1-R(t)",side=2,line=-1.5,adj=0.5,
         outer=T,font=2)
-  par(mfrow=c(1,1),mar= c(5, 4, 4, 2) + 0.1,cex.axis=1) # return defaults.
   }
   else if(dist=="Weibull"){
+    par(mar= c(5, 5, 4, 1) + 0.1,font.lab=2,cex.axis=0.8,cex.lab=1.1,
+        cex.main=1.3)
     Weibull.probability.plot(Fhat$time,Fhat$Fhat,gridlines,T)
     add95CIs.Weibull(simult.CLs)
   }
   else if(dist=="Normal"){
+    par(mar= c(5, 5, 4, 1) + 0.1,font.lab=2,cex.axis=0.8,cex.lab=1.1,
+        cex.main=1.3)
     Normal.probability.plot(Fhat$time,Fhat$Fhat,gridlines,T)
     points(simult.CLs$time,qnorm(simult.CLs$lo),pch="-",lwd=2,cex=1.2)
     points(simult.CLs$time,qnorm(simult.CLs$hi),pch="-",lwd=2,cex=1.2)
   }
   else if(dist=="Lognormal"){
+    par(mar= c(5, 5, 4, 1) + 0.1,font.lab=2,cex.axis=0.8,cex.lab=1.1,
+        cex.main=1.3)
     Lognormal.probability.plot(Fhat$time,Fhat$Fhat,gridlines,T)
     add95CIs.Lognormal(simult.CLs)
   }
   else{
+    par(mar= c(5, 5, 4, 1) + 0.1,font.lab=2,cex.axis=0.8,cex.lab=1.1,
+        cex.main=1.3)
     Exponential.probability.plot(Fhat$time,Fhat$Fhat,gridlines,T)
     add95CIs.Exponential(simult.CLs)
   }
+  par(mfrow=c(1,1),mar= c(5, 4, 4, 2) + 0.1,cex.axis=1,xpd=F,
+      oma=c(0,0,0,0),lheight=1,mgp=c(3,1,0),mai=c(1.02,0.82,0.82,0.42)) # return defaults.
 }
 
 ###
@@ -558,6 +544,94 @@ MTTF.boot.percentile.adj <- function(data,i){
   MTTF <- Weibull.2p.Expectation(eta=eta.b,
                                  beta=beta.b)
   return(MTTF)
+}
+
+###
+
+# For calculating joint confidence region:
+
+sev.pdf <- function(z){exp(z - exp(z))}
+sev.cdf <- function(z){1-exp(-exp(z))}
+
+loglik.sev <- function(data,mu,sigma){
+  t <- data$time
+  ll.vec <- numeric(nrow(data))
+  delta <- data$event
+  t.lnorm <- (log(t)-mu)/sigma
+  for(i in 1:nrow(data)){
+    ll.vec[i] <- (delta[i] * log(1 / (sigma*t[i]))) +
+                 (delta[i] * 
+                    log(sev.pdf(t.lnorm[i]))) +
+                 ((1-delta[i]) * 
+                    log(1 - sev.cdf(t.lnorm[i])))
+  }
+  loglik <- sum(ll.vec)
+  return(loglik)
+}
+
+contour.val <- function(dataset,mu.input,sigma.input,maximum.loglik){
+  pchisq(q=-2*(loglik.sev(dataset,mu.input,sigma.input) - 
+                 maximum.loglik),df = 2)
+}
+
+Get.contour.plot.data <- function(data,fitted.2parameter.Weibull.model,steps){
+  mod <- fitted.2parameter.Weibull.model # 2 parameter Weibull model fitted using SPREDA
+  mu.MLE <- unname(mod$coef[1])
+  sigma.MLE <- unname(exp(mod$coef[2]))
+  Max.loglik <- loglik.sev(data,mu=mu.MLE,sigma=sigma.MLE)
+  # Use 95% CIs for MLEs to determine input range for parameters.
+  beta.95cl_hi <- 1 / (summary(mod)$coefmat["sigma","95% Lower"])
+  beta.95cl_lo <- 1 / (summary(mod)$coefmat["sigma","95% Upper"])
+  eta.95cl_lo <- exp(summary(mod)$coefmat["(Intercept)","95% Lower"])
+  eta.95cl_hi <- exp(summary(mod)$coefmat["(Intercept)","95% Upper"])
+  # Input ranges (steps)
+  Betas <- seq(0.9*beta.95cl_lo,1.1*beta.95cl_hi,length.out=steps)
+  Etas <- seq(0.9*eta.95cl_lo,1.1*eta.95cl_hi,length.out=steps)
+  Sigmas <- 1 / Betas
+  Mus <- log(Etas)
+  ContourVals.df <- data.frame(Mus=rep(Mus,steps),
+                               Sigmas=rep(Sigmas,each=steps))
+  for(i in 1:nrow(ContourVals.df)){
+    ContourVals.df$z[i] <- contour.val(data,ContourVals.df$Mus[i],
+                                       ContourVals.df$Sigmas[i],Max.loglik)
+  }
+  ContourVals.df$Eta <- exp(ContourVals.df$Mus)
+  ContourVals.df$Beta <- 1 / ContourVals.df$Sigmas
+  return(ContourVals.df)
+  # z vector is the probability that Chi-square stat with 2d.f. is less than
+  # or equal to -2log likelihood ratio, for each input pair of Betas,Etas. Uses
+  # the large sample Chi-square approximation for the distribution of the log-
+  # likelihood ratio statistic.
+}
+
+Weibull.Confidence.Region <- function(data,model,probability,
+                                      title,show.contour.labels,
+                                      steps=100,html="No"){
+  # requires lattice package.
+  # Implemented for the fit of the 2-parameter Weibull model only.
+  beta.MLE <- 1 / unname(exp(model$coef[2]))
+  eta.MLE <- unname(exp(model$coef[1]))
+  reliability.data <- data
+  fitted.Weibull.model <- model
+  label.show <- as.logical(show.contour.labels)
+  Contour.df <- Get.contour.plot.data(reliability.data,
+                                      fitted.Weibull.model,steps)
+  if(html=="Yes"){ # this right align is not consistent for html generation.
+    title.settings <- list(
+      par.main.text = list(font = 2,
+                          just = "right", 
+                          x = grid::unit(170, "mm")))
+  } else{ # Use default settings.
+    title.settings <- list(par.main.text=trellis.par.get("par.main.text"))
+  }
+  contourplot(z ~ Eta * Beta, data=Contour.df,
+                      at = probability, labels=label.show,
+                      panel=function(data, ...){
+                        panel.contourplot(...)
+                        panel.points(x=eta.MLE,y=beta.MLE,pch=19,col='black')
+                      },
+                      par.settings=title.settings,
+                      main=title)
 }
 
 ###########
