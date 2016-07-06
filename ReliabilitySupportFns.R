@@ -637,61 +637,61 @@ Weibull.Confidence.Region <- function(data,model,probability,
 ###########
 
 # Some functions used for internal referencing in R markdown:
-chunkref <- local({
-  function(chunklabel) {
-    sprintf('[%s](#%s)', chunklabel, chunklabel )
-  }  
-})
+# chunkref <- local({
+  # function(chunklabel) {
+    # sprintf('[%s](#%s)', chunklabel, chunklabel )
+  # }  
+# })
 
-secref <- local({
-  function(seclabel) {
-    sprintf('[%s](#%s)', seclabel, seclabel )
-  }  
-})
+# secref <- local({
+  # function(seclabel) {
+    # sprintf('[%s](#%s)', seclabel, seclabel )
+  # }  
+# })
 
-pgref <- local({
-  function(n)
-    sprintf('[Page-%i](#Page-%i)', n, n)
-})
+# pgref <- local({
+  # function(n)
+    # sprintf('[Page-%i](#Page-%i)', n, n)
+# })
 
-sec <- local({
-  function(seclabel) {
-    sprintf('# <a name="%s"/> %s', seclabel, seclabel )
-  }  
-})
+# sec <- local({
+  # function(seclabel) {
+    # sprintf('# <a name="%s"/> %s', seclabel, seclabel )
+  # }  
+# })
 
-pgcount <- local({
-  pg <- 0
-  function(inc=T) {
-    if( inc ) { pg <<- pg + 1 }
-    return( pg )
-  }
-})
+# pgcount <- local({
+  # pg <- 0
+  # function(inc=T) {
+    # if( inc ) { pg <<- pg + 1 }
+    # return( pg )
+  # }
+# })
 
-pganchor <- local({
-  function(doLabel=T) {
-    if( doLabel) {
-      sprintf('\n-----\nPage-%i\n<a name="Page-%i"/>\n', pgcount(inc=F), pgcount() )
-    } else {
-      sprintf('\n<a name="Page-%i"/>\n', pgcount() )
-    }
-  }
-})
+# pganchor <- local({
+  # function(doLabel=T) {
+    # if( doLabel) {
+      # sprintf('\n-----\nPage-%i\n<a name="Page-%i"/>\n', pgcount(inc=F), pgcount() )
+    # } else {
+      # sprintf('\n<a name="Page-%i"/>\n', pgcount() )
+    # }
+  # }
+# })
 
-knit_hooks$set( anchor = function(before, options, envir) {
-  if ( before ) {
-    sprintf('<a name="%s"/>\n', options$label )
-  }
-})
+# knit_hooks$set( anchor = function(before, options, envir) {
+  # if ( before ) {
+    # sprintf('<a name="%s"/>\n', options$label )
+  # }
+# })
 
-knit_hooks$set( echo.label = function(before, options, envir) {
-  if ( before ) {
-    sprintf('> %s', options$label )
-  }
-})
+# knit_hooks$set( echo.label = function(before, options, envir) {
+  # if ( before ) {
+    # sprintf('> %s', options$label )
+  # }
+# })
 
-knit_hooks$set( pgbreak = function(before, options, envir) {
-  if ( !before ) {
-    pganchor();
-  }
-})
+# knit_hooks$set( pgbreak = function(before, options, envir) {
+  # if ( !before ) {
+    # pganchor();
+  # }
+# })
